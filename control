@@ -1,0 +1,9 @@
+Package: com.nahtedetihw.floatingdarkmode
+Name: FloatingDarkMode
+Version: 1.0
+Architecture: iphoneos-arm
+Description: Floating Dark Mode Button!
+Maintainer: Ethan Whited
+Author: Ethan Whited
+Section: Tweaks
+Depends: mobilesubstrate (>= 0.9.5000)
