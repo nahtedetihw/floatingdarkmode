@@ -2,104 +2,106 @@
 #import <AudioToolbox/AudioServices.h>
 #import "UIView+draggable.h"
 
-UITapGestureRecognizer *tapGesture;
-UIView *darkModeButtonView;
-UIImageView *darkModeButtonImageView;
+UIVisualEffectView *bluryView;
+UIVisualEffect *blurEffect;
 
 @interface UIUserInterfaceStyleArbiter : NSObject
-@property (nonatomic,readonly) long long currentStyle;
+@property (nonatomic, readonly) long long currentStyle;
 + (id)sharedInstance;
 - (void)toggleCurrentStyleWithOverrideTiming:(long long)arg1;
 @end
 
 @interface UIWindow (Private)
-@property (getter=isKeyWindow,nonatomic,readonly) BOOL keyWindow;
+@property (getter=isKeyWindow, nonatomic, readonly) BOOL keyWindow;
+@property (strong, nonatomic) UIView *darkModeButtonView;
+@property (strong, nonatomic) UIImageView *darkModeButtonImageView;
+@property (strong, nonatomic) UITapGestureRecognizer *tapGesture;
 @end
 
 %hook UIWindow
--(void)orderFront:(id)arg1 {
-
-        if (![NSStringFromClass([((UIWindow *)self) class]) isEqualToString:@"SBControlCenterWindow"]) {
-
-            %orig;
-            
-            darkModeButtonView = [[UIView alloc] initWithFrame:CGRectMake([UIScreen mainScreen].bounds.size.width - 70, [UIScreen mainScreen].bounds.size.height - 70, 60, 60)];
-            
-            darkModeButtonView.hidden = NO;
-
-            darkModeButtonView.backgroundColor = [UIColor clearColor];
-            
-            darkModeButtonImageView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, darkModeButtonView.frame.size.height*0.60, darkModeButtonView.frame.size.width*0.60)];
-            
-                UIColor *darkModeLabelColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
-                BOOL isDarkMode = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
-                BOOL isLightMode = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleLight;
-                
-                if (isDarkMode) {
-                    return [UIColor whiteColor];
-                } else if (isLightMode) {
-                    return [UIColor blackColor];
-                }
-                return [UIColor blackColor];
-            }];
-            
-                darkModeButtonImageView.tintColor = darkModeLabelColor;
-            
+%property (strong, nonatomic) UIView *darkModeButtonView;
+%property (strong, nonatomic) UIImageView *darkModeButtonImageView;
+%property (strong, nonatomic) UITapGestureRecognizer *tapGesture;
+- (void)orderFront:(id)arg1 {
+    %orig;
+    if (![NSStringFromClass([((UIWindow *)self) class]) isEqualToString:@"SBControlCenterWindow"] && !self.darkModeButtonView) {
+        self.darkModeButtonView = [[UIView alloc] initWithFrame:CGRectMake([UIScreen mainScreen].bounds.size.width - 70, [UIScreen mainScreen].bounds.size.height - 70, 60, 60)];
+        self.darkModeButtonView.hidden = NO;
+        self.darkModeButtonView.backgroundColor = [UIColor clearColor];
+        self.darkModeButtonImageView = [[UIImageView alloc] initWithFrame:CGRectMake(0, 0, self.darkModeButtonView.frame.size.height*0.60, self.darkModeButtonView.frame.size.width*0.60)];
+        
+        UIColor *darkModeLabelColor = [UIColor colorWithDynamicProvider:^UIColor *(UITraitCollection *traitCollection) {
             BOOL isDarkMode = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
             BOOL isLightMode = self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleLight;
-            UIImage *darkModeImage;
             if (isDarkMode) {
-                darkModeImage = [UIImage systemImageNamed:@"circle.righthalf.fill"];
+                return [UIColor whiteColor];
             } else if (isLightMode) {
-                darkModeImage = [UIImage systemImageNamed:@"circle.lefthalf.fill"];
+                return [UIColor blackColor];
             }
-            darkModeButtonImageView.image = darkModeImage;
-            
-            darkModeButtonImageView.center = CGPointMake(darkModeButtonView.frame.size.width/2, darkModeButtonView.frame.size.height/2);
-            
-            darkModeButtonImageView.contentMode = UIViewContentModeScaleAspectFit;
-            
-            [darkModeButtonView enableDragging];
-            darkModeButtonView.cagingArea = CGRectMake(0, 0, [UIScreen mainScreen].bounds.size.width, [UIScreen mainScreen].bounds.size.width);
-            darkModeButtonView.shouldMoveAlongX = true;
-            darkModeButtonView.shouldMoveAlongY = true;
-            darkModeButtonView.handle = CGRectMake([UIScreen mainScreen].bounds.size.width - 70, [UIScreen mainScreen].bounds.size.height - 70, 60, 60);
-            
-            [darkModeButtonView addSubview:darkModeButtonImageView];
-            
-            UIVisualEffectView *blurView = [[UIVisualEffectView alloc] initWithFrame:darkModeButtonView.bounds];
-            UIVisualEffect *blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
-            blurView.effect = blurEffect;
-            blurView.layer.masksToBounds = YES;
-            blurView.layer.cornerRadius = darkModeButtonView.frame.size.width/2;
-
-            [darkModeButtonView insertSubview:blurView atIndex:0];
-            
-            tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTapGesture:)];
-            [darkModeButtonView addGestureRecognizer:tapGesture];
-            
-            darkModeButtonView.layer.masksToBounds = YES;
-            darkModeButtonView.layer.cornerRadius = darkModeButtonView.frame.size.height/2;
-
-            [self.rootViewController.view addSubview:darkModeButtonView];
-
+            return [UIColor blackColor];
+        }];
+        
+        self.darkModeButtonImageView.tintColor = darkModeLabelColor;
+        UIImage *darkModeImage;
+        if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+            darkModeImage = [UIImage systemImageNamed:@"circle.righthalf.fill"];
+        } else if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleLight) {
+            darkModeImage = [UIImage systemImageNamed:@"circle.lefthalf.fill"];
         }
-        %orig;
-}
+        self.darkModeButtonImageView.image = darkModeImage;
+        self.darkModeButtonImageView.center = CGPointMake(self.darkModeButtonView.frame.size.width / 2, self.darkModeButtonView.frame.size.height / 2);
+        self.darkModeButtonImageView.contentMode = UIViewContentModeScaleAspectFit;
+        [self.darkModeButtonView enableDragging];
+        self.darkModeButtonView.cagingArea = CGRectMake(0, 0, [UIScreen mainScreen].bounds.size.width, [UIScreen mainScreen].bounds.size.width);
+        self.darkModeButtonView.shouldMoveAlongX = true;
+        self.darkModeButtonView.shouldMoveAlongY = true;
+        self.darkModeButtonView.handle = CGRectMake([UIScreen mainScreen].bounds.size.width - 70, [UIScreen mainScreen].bounds.size.height - 70, 60, 60);
+        
+        [self.darkModeButtonView addSubview:self.darkModeButtonImageView];
+        
+        bluryView = [[UIVisualEffectView alloc] initWithFrame:self.darkModeButtonView.bounds];
+        
+        if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark];
+        } else if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleLight) {
+        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialLight];
+        }
+        bluryView.effect = blurEffect;
+        bluryView.layer.masksToBounds = YES;
+        bluryView.layer.cornerRadius = self.darkModeButtonView.frame.size.width/2;
 
+        [self.darkModeButtonView insertSubview:bluryView atIndex:0];
+        
+        self.tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTapGesture:)];
+        [self.darkModeButtonView addGestureRecognizer:self.tapGesture];
+        
+        self.darkModeButtonView.layer.masksToBounds = YES;
+        self.darkModeButtonView.layer.cornerRadius = self.darkModeButtonView.frame.size.height/2;
+
+        [self.rootViewController.view addSubview:self.darkModeButtonView];
+    }
+}
+- (void)viewWillDisappear:(BOOL)animated {
+    %orig;
+    self.darkModeButtonView.hidden = YES;
+    self.darkModeButtonView = nil;
+}
 %new
 - (void)handleTapGesture:(UITapGestureRecognizer *)sender {
     [[%c(UIUserInterfaceStyleArbiter) sharedInstance] toggleCurrentStyleWithOverrideTiming:2];
-    AudioServicesPlaySystemSound(1521);
+    AudioServicesPlaySystemSound(1519);
 }
-
-- (void)viewWillDisappear:(BOOL)animated {
-
+- (void)traitCollectionDidChange:(id)arg1 {
     %orig;
-    
-    darkModeButtonView.hidden = YES;
-    darkModeButtonView = nil;
-    
+    UIImage *darkModeImage;
+    if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+        darkModeImage = [UIImage systemImageNamed:@"circle.righthalf.fill"];
+        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark];
+    } else if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleLight) {
+        darkModeImage = [UIImage systemImageNamed:@"circle.lefthalf.fill"];
+        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialLight];
+    }
+        bluryView.effect = blurEffect;
+    [self.darkModeButtonImageView setImage:darkModeImage];
 }
-
 %end
