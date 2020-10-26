@@ -2,8 +2,12 @@
 #import <AudioToolbox/AudioServices.h>
 #import "UIView+draggable.h"
 
-UIVisualEffectView *bluryView;
+UIVisualEffectView *blurryView;
 UIVisualEffect *blurEffect;
+
+static NSString *domainString = @"com.nahtedetihw.floatingdarkmode";
+static NSString *notificationString = @"com.nahtedetihw.floatingdarkmode/preferences.changed";
+static BOOL enabled;
 
 @interface UIUserInterfaceStyleArbiter : NSObject
 @property (nonatomic, readonly) long long currentStyle;
@@ -18,6 +22,12 @@ UIVisualEffect *blurEffect;
 @property (strong, nonatomic) UITapGestureRecognizer *tapGesture;
 @end
 
+@interface NSUserDefaults (FDM)
+- (id)objectForKey:(NSString *)key inDomain:(NSString *)domain;
+- (void)setObject:(id)value forKey:(NSString *)key inDomain:(NSString *)domain;
+@end
+
+%group Tweak
 %hook UIWindow
 %property (strong, nonatomic) UIView *darkModeButtonView;
 %property (strong, nonatomic) UIImageView *darkModeButtonImageView;
@@ -59,18 +69,18 @@ UIVisualEffect *blurEffect;
         
         [self.darkModeButtonView addSubview:self.darkModeButtonImageView];
         
-        bluryView = [[UIVisualEffectView alloc] initWithFrame:self.darkModeButtonView.bounds];
+        blurryView = [[UIVisualEffectView alloc] initWithFrame:self.darkModeButtonView.bounds];
         
         if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
-        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark];
+            blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialDark];
         } else if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleLight) {
-        blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialLight];
+            blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialLight];
         }
-        bluryView.effect = blurEffect;
-        bluryView.layer.masksToBounds = YES;
-        bluryView.layer.cornerRadius = self.darkModeButtonView.frame.size.width/2;
+        blurryView.effect = blurEffect;
+        blurryView.layer.masksToBounds = YES;
+        blurryView.layer.cornerRadius = self.darkModeButtonView.frame.size.width/2;
 
-        [self.darkModeButtonView insertSubview:bluryView atIndex:0];
+        [self.darkModeButtonView insertSubview:blurryView atIndex:0];
         
         self.tapGesture = [[UITapGestureRecognizer alloc] initWithTarget:self action:@selector(handleTapGesture:)];
         [self.darkModeButtonView addGestureRecognizer:self.tapGesture];
@@ -101,7 +111,21 @@ UIVisualEffect *blurEffect;
         darkModeImage = [UIImage systemImageNamed:@"circle.lefthalf.fill"];
         blurEffect = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterialLight];
     }
-        bluryView.effect = blurEffect;
+        blurryView.effect = blurEffect;
     [self.darkModeButtonImageView setImage:darkModeImage];
 }
 %end
+%end
+
+static void notificationCallback(CFNotificationCenterRef center, void *observer, CFStringRef name, const void *object, CFDictionaryRef userInfo) {
+	NSNumber *enabledValue = (NSNumber *)[[NSUserDefaults standardUserDefaults] objectForKey:@"enabled" inDomain:domainString];
+	enabled = (enabledValue)? [enabledValue boolValue] : YES;
+}
+
+%ctor {
+	notificationCallback(NULL, NULL, NULL, NULL, NULL);
+	CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, notificationCallback, (CFStringRef)notificationString, NULL, CFNotificationSuspensionBehaviorCoalesce);
+	if (enabled) {
+		%init(Tweak);
+	}
+}
