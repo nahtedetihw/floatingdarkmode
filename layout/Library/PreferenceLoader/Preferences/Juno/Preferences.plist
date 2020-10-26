@@ -15,7 +15,7 @@
 		<key>default</key>
 		<true/>
 		<key>icon</key>
-		<string>/Applications/Preferences.app/icon-table@2x.png</string>
+		<string>/Library/Application Support/FloatingDarkMode/darkMode.png</string>
 		<key>PostNotification</key>
 		<string>com.nahtedetihw.floatingdarkmode/preferences.changed</string>
 	</dict>
